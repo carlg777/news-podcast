@@ -44,7 +44,9 @@ export async function refreshAuth() {
  * Make a batchexecute RPC call to NotebookLM.
  */
 async function rpc(rpcId, params, sourcePath = '/') {
-  const reqPayload = JSON.stringify([[[rpcId, JSON.stringify(params), null, 'generic']]]);
+  // Use compact JSON (no spaces) to match Chrome's format
+  const paramsJson = JSON.stringify(params).replace(/ /g, '');
+  const fReq = JSON.stringify([[[rpcId, paramsJson, null, 'generic']]]).replace(/ /g, '');
 
   const urlParams = new URLSearchParams({
     'rpcids': rpcId,
@@ -54,10 +56,9 @@ async function rpc(rpcId, params, sourcePath = '/') {
     'rt': 'c',
   });
 
-  const body = new URLSearchParams({
-    'f.req': reqPayload,
-    'at': csrfToken,
-  });
+  // Use encodeURIComponent (percent-encoding) instead of URLSearchParams
+  // to match NotebookLM's expected format
+  const body = `f.req=${encodeURIComponent(fReq)}&at=${encodeURIComponent(csrfToken)}&`;
 
   const res = await fetch(`${BATCH_URL}?${urlParams}`, {
     method: 'POST',
@@ -69,7 +70,7 @@ async function rpc(rpcId, params, sourcePath = '/') {
       'X-Same-Domain': '1',
       'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36',
     },
-    body: body.toString(),
+    body: body,
   });
 
   if (!res.ok) {
