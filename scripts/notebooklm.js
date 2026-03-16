@@ -265,8 +265,13 @@ export async function generateAudio(notebookId, sourceIds = []) {
 
         console.log(`Audio poll (attempt ${attempts}): artifact=${artId}, status=${statusCode}`);
 
-        // Status 3 = completed, 1 = in_progress
-        if (statusCode === 3) {
+        // Log metadata when status changes from 1
+        if (statusCode >= 2 && art[6]) {
+          console.log(`Audio metadata[6]: ${JSON.stringify(art[6]).slice(0, 300)}`);
+        }
+
+        // Status 3 = completed, 2 = may also be completed, 1 = in_progress
+        if (statusCode === 3 || statusCode === 2) {
           // Audio URL is at art[6][5][n][0] where item[2] == "audio/mp4"
           let audioUrl = null;
           const metadata = art[6];
