@@ -78,21 +78,12 @@ async function main() {
 
     const { audioUrl } = await generateAudio(notebookId, sourceIds);
 
-    const localPath = await downloadAudio(audioUrl);
-    const audioBuffer = await readFile(localPath);
-    const storagePath = `${id}.m4a`;
+    // Phase 1 complete: audio is generated on NotebookLM.
+    // Store the NLM audio URL and set status to "audio_ready".
+    // Phase 2 (local cron) will download and upload to Supabase Storage.
+    await updatePodcast(id, { audio_url: audioUrl, status: 'audio_ready' });
 
-    const { error: uploadError } = await supabase.storage
-      .from('podcast-audio')
-      .upload(storagePath, audioBuffer, { contentType: 'audio/mp4', upsert: true });
-
-    if (uploadError) throw new Error(`Storage upload failed: ${uploadError.message}`);
-
-    const { data: urlData } = supabase.storage.from('podcast-audio').getPublicUrl(storagePath);
-
-    await updatePodcast(id, { audio_url: urlData.publicUrl, status: 'ready' });
-
-    console.log(`Podcast ${id} is ready: ${urlData.publicUrl}`);
+    console.log(`Podcast ${id} audio ready for download: ${audioUrl.slice(0, 80)}...`);
 
     await cleanupOldPodcasts();
     console.log('Pipeline complete.');

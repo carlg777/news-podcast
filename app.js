@@ -119,7 +119,13 @@ function startPolling(podcastId) {
         document.querySelector('.generating-sub').textContent = data.error_message || 'Unknown error';
       } else {
         const statusText = document.getElementById('generating-status');
-        statusText.textContent = (data.articles && data.articles.length > 0) ? 'Generating audio...' : 'Creating podcast...';
+        if (data.status === 'audio_ready') {
+          statusText.textContent = 'Downloading audio...';
+        } else if (data.articles && data.articles.length > 0) {
+          statusText.textContent = 'Generating audio...';
+        } else {
+          statusText.textContent = 'Creating podcast...';
+        }
       }
     } catch (err) { /* network error, keep polling */ }
   }, 5000);
