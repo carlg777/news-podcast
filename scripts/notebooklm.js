@@ -308,16 +308,29 @@ export async function generateAudio(notebookId, sourceIds = []) {
 export async function downloadAudio(audioUrl) {
   const outputPath = path.join('/tmp', `podcast-${Date.now()}.m4a`);
   console.log(`Downloading audio from: ${audioUrl}`);
-  console.log(`Saving to: ${outputPath}`);
 
-  const res = await fetch(audioUrl, {
-    headers: {
-      Cookie: cookies,
-      'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36',
-      'Referer': 'https://notebooklm.google.com/',
-    },
-    redirect: 'follow',
-  });
+  // Follow redirects manually to ensure cookies are sent on every hop
+  let currentUrl = audioUrl;
+  let res;
+
+  for (let i = 0; i < 5; i++) {
+    res = await fetch(currentUrl, {
+      headers: {
+        Cookie: cookies,
+        'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36',
+        'Referer': 'https://notebooklm.google.com/',
+      },
+      redirect: 'manual', // Handle redirects manually to resend cookies
+    });
+
+    if (res.status >= 300 && res.status < 400) {
+      const location = res.headers.get('location');
+      console.log(`Redirect ${res.status} → ${location}`);
+      currentUrl = location;
+      continue;
+    }
+    break;
+  }
 
   if (!res.ok) {
     throw new Error(`Audio download failed (${res.status})`);
