@@ -68,20 +68,27 @@ async function main() {
     const notebookId = await createNotebook(notebookTitle);
     await updatePodcast(id, { notebook_id: notebookId });
 
+    const sourceIds = [];
     for (const article of allArticles) {
       try {
-        await addSource(notebookId, article.url);
-        // Small delay between sources to avoid rate limiting
-        await new Promise(r => setTimeout(r, 2000));
+        const sourceId = await addSource(notebookId, article.url);
+        if (sourceId) sourceIds.push(sourceId);
+        // Delay between sources to avoid rate limiting
+        await new Promise(r => setTimeout(r, 3000));
       } catch (err) { console.warn(`Failed to add source ${article.url}:`, err.message); }
     }
 
-    // Wait for NotebookLM to index sources before generating audio
+    console.log(`Collected ${sourceIds.length} source IDs of ${allArticles.length} articles`);
+
+    if (sourceIds.length === 0) {
+      throw new Error('No source IDs collected — cannot generate audio');
+    }
+
+    // Wait for NotebookLM to finish indexing
     console.log('Waiting 15s for sources to index...');
     await new Promise(r => setTimeout(r, 15000));
 
-    // Pass empty sourceIds — NotebookLM will use ALL sources in the notebook
-    const { audioUrl } = await generateAudio(notebookId);
+    const { audioUrl } = await generateAudio(notebookId, sourceIds);
 
     // Phase 1 complete: audio is generated on NotebookLM.
     // Store the NLM audio URL and set status to "audio_ready".
