@@ -73,9 +73,9 @@ async function main() {
       catch (err) { console.warn(`Failed to add source ${article.url}:`, err.message); }
     }
 
-    await generateAudio(notebookId);
+    const { audioUrl } = await generateAudio(notebookId);
 
-    const localPath = await downloadAudio(notebookId);
+    const localPath = await downloadAudio(audioUrl);
     const audioBuffer = await readFile(localPath);
     const storagePath = `${id}.mp3`;
 
