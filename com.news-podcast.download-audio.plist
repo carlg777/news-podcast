@@ -1,0 +1,36 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+    <key>Label</key>
+    <string>com.news-podcast.download-audio</string>
+
+    <key>ProgramArguments</key>
+    <array>
+        <string>/opt/homebrew/bin/node</string>
+        <string>/Volumes/Dropbox/Dropbox/425 Websites/Custom News Podcaster/scripts/download-audio.js</string>
+    </array>
+
+    <key>WorkingDirectory</key>
+    <string>/Volumes/Dropbox/Dropbox/425 Websites/Custom News Podcaster</string>
+
+    <key>EnvironmentVariables</key>
+    <dict>
+        <key>PATH</key>
+        <string>/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin</string>
+        <key>NLM_PATH</key>
+        <string>/Users/carlgerber/.local/bin/nlm</string>
+    </dict>
+
+    <key>StartInterval</key>
+    <integer>300</integer>
+
+    <key>StandardOutPath</key>
+    <string>/tmp/news-podcast-download.log</string>
+    <key>StandardErrorPath</key>
+    <string>/tmp/news-podcast-download.log</string>
+
+    <key>RunAtLoad</key>
+    <true/>
+</dict>
+</plist>
