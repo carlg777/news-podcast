@@ -192,7 +192,7 @@ async function loadHistory() {
   try {
     const res = await fetch('/api/podcasts');
     const data = await res.json();
-    const podcasts = data.podcasts || [];
+    const podcasts = (data.podcasts || []).filter(p => p.status === 'ready' || p.status === 'audio_ready' || p.status === 'generating');
     if (podcasts.length === 0) {
       list.innerHTML = '<p style="text-align:center;color:var(--text-muted);padding:40px 0">No podcasts yet</p>';
       return;
