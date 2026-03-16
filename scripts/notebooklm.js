@@ -78,7 +78,12 @@ async function rpc(rpcId, params, sourcePath = '/') {
   }
 
   const text = await res.text();
-  return parseRpcResponse(text, rpcId);
+  const result = parseRpcResponse(text, rpcId);
+  if (result === null) {
+    console.warn(`RPC ${rpcId} returned null. Raw response (first 500 chars):`);
+    console.warn(text.slice(0, 500));
+  }
+  return result;
 }
 
 /**
