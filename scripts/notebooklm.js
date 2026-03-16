@@ -309,23 +309,26 @@ export async function downloadAudio(audioUrl) {
   const outputPath = path.join('/tmp', `podcast-${Date.now()}.m4a`);
   console.log(`Downloading audio from: ${audioUrl}`);
 
-  // Follow redirects manually to ensure cookies are sent on every hop
+  // Follow redirects manually, sending cookies on every hop.
+  // Google audio URLs redirect: lh3.googleusercontent.com → lh3.google.com → accounts.google.com
+  // Cookies must be sent at each step for auth to work.
   let currentUrl = audioUrl;
   let res;
 
-  for (let i = 0; i < 5; i++) {
+  for (let i = 0; i < 10; i++) {
     res = await fetch(currentUrl, {
       headers: {
         Cookie: cookies,
         'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36',
         'Referer': 'https://notebooklm.google.com/',
       },
-      redirect: 'manual', // Handle redirects manually to resend cookies
+      redirect: 'manual',
     });
 
     if (res.status >= 300 && res.status < 400) {
       const location = res.headers.get('location');
-      console.log(`Redirect ${res.status} → ${location}`);
+      if (!location) break;
+      console.log(`Redirect ${res.status} → ${location.slice(0, 100)}...`);
       currentUrl = location;
       continue;
     }
@@ -337,11 +340,10 @@ export async function downloadAudio(audioUrl) {
   }
 
   const contentType = res.headers.get('content-type') || '';
-  console.log(`Response content-type: ${contentType}`);
+  console.log(`Response content-type: ${contentType}, final URL: ${currentUrl.slice(0, 80)}...`);
 
   const buffer = Buffer.from(await res.arrayBuffer());
 
-  // Check if we got HTML instead of audio (auth redirect)
   if (buffer.length > 0 && buffer.slice(0, 15).toString().includes('<!doctype')) {
     throw new Error('Audio download returned HTML — cookies may have expired. Run `nlm login` locally to refresh.');
   }
