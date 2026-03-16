@@ -48,7 +48,8 @@ async function main() {
 
       // Use nlm CLI to download (has proper Google auth via Chrome profile)
       // Syntax: nlm download audio NOTEBOOK_ID -o OUTPUT_PATH
-      await exec('/Users/carlgerber/.local/bin/nlm', [
+      const nlmPath = process.env.NLM_PATH || `${process.env.HOME}/.local/bin/nlm`;
+      await exec(nlmPath, [
         'download', 'audio',
         podcast.notebook_id,
         '-o', outputPath,
