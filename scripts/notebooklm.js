@@ -175,45 +175,32 @@ export async function addSource(notebookId, url) {
     [1, null, null, null, null, null, null, null, null, null, [1]],
   ];
 
-  await rpc('izAoDd', params, `/notebook/${notebookId}`);
-}
+  const result = await rpc('izAoDd', params, `/notebook/${notebookId}`);
 
-/**
- * Get source IDs from a notebook.
- */
-async function getNotebookSources(notebookId) {
-  const result = await rpc('rLM1Ne', [[notebookId]], `/notebook/${notebookId}`);
-  const sourceIds = [];
-
-  if (result && Array.isArray(result)) {
-    // Sources are in the notebook data structure
-    // Walk the response looking for source ID arrays
-    const jsonStr = JSON.stringify(result);
-    // Source IDs are UUIDs - extract them from the nested structure
-    const sources = result[0]?.[12] || result[0]?.[9] || [];
-    for (const src of sources) {
-      if (Array.isArray(src) && src[0]) {
-        const srcId = Array.isArray(src[0]) ? src[0][0] : src[0];
-        if (typeof srcId === 'string' && srcId.length > 10) {
-          sourceIds.push(srcId);
-        }
+  // Extract source ID from response
+  if (result && Array.isArray(result) && result[0]) {
+    const sourceList = result[0];
+    if (Array.isArray(sourceList) && sourceList[0]) {
+      const srcData = sourceList[0];
+      const sourceId = Array.isArray(srcData[0]) ? srcData[0][0] : srcData[0];
+      if (sourceId) {
+        console.log(`Source added: ${sourceId}`);
+        return sourceId;
       }
     }
   }
-
-  return sourceIds;
+  console.warn(`Source added but couldn't extract ID for ${url}`);
+  return null;
 }
 
 /**
  * Create an audio artifact and poll until complete.
+ * @param {string} notebookId
+ * @param {string[]} sourceIds - IDs returned from addSource calls
  * Returns { artifactId, audioUrl }.
  */
-export async function generateAudio(notebookId) {
-  console.log('Starting audio generation...');
-
-  // Get source IDs
-  const sourceIds = await getNotebookSources(notebookId);
-  console.log(`Found ${sourceIds.length} sources in notebook`);
+export async function generateAudio(notebookId, sourceIds = []) {
+  console.log(`Starting audio generation with ${sourceIds.length} sources...`);
 
   // Build source arrays in both formats
   const sourcesNested = sourceIds.map(id => [[id]]);

@@ -68,12 +68,15 @@ async function main() {
     const notebookId = await createNotebook(notebookTitle);
     await updatePodcast(id, { notebook_id: notebookId });
 
+    const sourceIds = [];
     for (const article of allArticles) {
-      try { await addSource(notebookId, article.url); }
-      catch (err) { console.warn(`Failed to add source ${article.url}:`, err.message); }
+      try {
+        const sourceId = await addSource(notebookId, article.url);
+        if (sourceId) sourceIds.push(sourceId);
+      } catch (err) { console.warn(`Failed to add source ${article.url}:`, err.message); }
     }
 
-    const { audioUrl } = await generateAudio(notebookId);
+    const { audioUrl } = await generateAudio(notebookId, sourceIds);
 
     const localPath = await downloadAudio(audioUrl);
     const audioBuffer = await readFile(localPath);
