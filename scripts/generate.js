@@ -77,12 +77,11 @@ async function main() {
     }
 
     // Wait for NotebookLM to index sources before generating audio
-    console.log('Waiting 10s for sources to index...');
-    await new Promise(r => setTimeout(r, 10000));
+    console.log('Waiting 15s for sources to index...');
+    await new Promise(r => setTimeout(r, 15000));
 
-    // Get source IDs from notebook (more reliable than parsing addSource responses)
-    const sourceIds = await getSourceIds(notebookId);
-    const { audioUrl } = await generateAudio(notebookId, sourceIds);
+    // Pass empty sourceIds — NotebookLM will use ALL sources in the notebook
+    const { audioUrl } = await generateAudio(notebookId);
 
     // Phase 1 complete: audio is generated on NotebookLM.
     // Store the NLM audio URL and set status to "audio_ready".
