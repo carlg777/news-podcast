@@ -267,10 +267,20 @@ export async function generateAudio(notebookId, sourceIds = []) {
 
         // Status 3 = completed, 1 = in_progress
         if (statusCode === 3) {
-          // Audio URL is at art[6][3]
+          // Audio URL is at art[6][5][n][0] where item[2] == "audio/mp4"
           let audioUrl = null;
-          if (Array.isArray(art[6]) && art[6].length > 3 && typeof art[6][3] === 'string') {
-            audioUrl = art[6][3];
+          const metadata = art[6];
+          if (Array.isArray(metadata) && metadata.length > 5 && Array.isArray(metadata[5])) {
+            for (const item of metadata[5]) {
+              if (Array.isArray(item) && item.length > 2 && item[2] === 'audio/mp4') {
+                audioUrl = item[0];
+                break;
+              }
+            }
+            // Fallback: first URL in media list
+            if (!audioUrl && metadata[5].length > 0 && Array.isArray(metadata[5][0])) {
+              audioUrl = metadata[5][0][0];
+            }
           }
 
           if (audioUrl) {

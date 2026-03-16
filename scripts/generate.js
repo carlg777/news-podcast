@@ -80,11 +80,11 @@ async function main() {
 
     const localPath = await downloadAudio(audioUrl);
     const audioBuffer = await readFile(localPath);
-    const storagePath = `${id}.mp3`;
+    const storagePath = `${id}.m4a`;
 
     const { error: uploadError } = await supabase.storage
       .from('podcast-audio')
-      .upload(storagePath, audioBuffer, { contentType: 'audio/mpeg', upsert: true });
+      .upload(storagePath, audioBuffer, { contentType: 'audio/mp4', upsert: true });
 
     if (uploadError) throw new Error(`Storage upload failed: ${uploadError.message}`);
 
@@ -117,7 +117,7 @@ async function cleanupOldPodcasts() {
   console.log(`Cleaning up ${oldPodcasts.length} old podcasts...`);
 
   for (const podcast of oldPodcasts) {
-    try { await supabase.storage.from('podcast-audio').remove([`${podcast.id}.mp3`]); }
+    try { await supabase.storage.from('podcast-audio').remove([`${podcast.id}.m4a`]); }
     catch (err) { console.warn(`Failed to delete audio for ${podcast.id}:`, err.message); }
     if (podcast.notebook_id) await deleteNotebook(podcast.notebook_id);
     await supabase.from('podcasts').delete().eq('id', podcast.id);
