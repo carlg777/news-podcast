@@ -306,21 +306,33 @@ export async function generateAudio(notebookId, sourceIds = []) {
  * Returns the local file path.
  */
 export async function downloadAudio(audioUrl) {
-  const outputPath = path.join('/tmp', `podcast-${Date.now()}.mp3`);
-  console.log(`Downloading audio to ${outputPath}...`);
+  const outputPath = path.join('/tmp', `podcast-${Date.now()}.m4a`);
+  console.log(`Downloading audio from: ${audioUrl}`);
+  console.log(`Saving to: ${outputPath}`);
 
   const res = await fetch(audioUrl, {
     headers: {
       Cookie: cookies,
       'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36',
+      'Referer': 'https://notebooklm.google.com/',
     },
+    redirect: 'follow',
   });
 
   if (!res.ok) {
     throw new Error(`Audio download failed (${res.status})`);
   }
 
+  const contentType = res.headers.get('content-type') || '';
+  console.log(`Response content-type: ${contentType}`);
+
   const buffer = Buffer.from(await res.arrayBuffer());
+
+  // Check if we got HTML instead of audio (auth redirect)
+  if (buffer.length > 0 && buffer.slice(0, 15).toString().includes('<!doctype')) {
+    throw new Error('Audio download returned HTML — cookies may have expired. Run `nlm login` locally to refresh.');
+  }
+
   await writeFile(outputPath, buffer);
   console.log(`Audio downloaded: ${buffer.length} bytes`);
   return outputPath;
