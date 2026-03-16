@@ -46,11 +46,13 @@ async function main() {
 
       const outputPath = `/tmp/podcast-${podcast.id}.m4a`;
 
-      // Use nlm CLI to download (it has proper Google auth via Chrome profile)
+      // Use nlm CLI to download (has proper Google auth via Chrome profile)
+      // Syntax: nlm download audio NOTEBOOK_ID -o OUTPUT_PATH
       await exec('nlm', [
         'download', 'audio',
-        '--notebook', podcast.notebook_id,
-        '--output', outputPath,
+        podcast.notebook_id,
+        '-o', outputPath,
+        '--no-progress',
       ], { timeout: 120000 });
 
       const audioBuffer = await readFile(outputPath);

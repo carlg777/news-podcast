@@ -85,7 +85,9 @@ async function main() {
 
     console.log(`Podcast ${id} audio ready for download: ${audioUrl.slice(0, 80)}...`);
 
-    await cleanupOldPodcasts();
+    try { await cleanupOldPodcasts(); } catch (cleanupErr) {
+      console.warn('Cleanup failed (non-fatal):', cleanupErr.message);
+    }
     console.log('Pipeline complete.');
   } catch (err) {
     console.error('Pipeline failed:', err);
