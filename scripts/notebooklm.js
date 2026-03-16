@@ -194,6 +194,39 @@ export async function addSource(notebookId, url) {
 }
 
 /**
+ * Get source IDs from a notebook by listing all notebooks and finding ours.
+ */
+export async function getSourceIds(notebookId) {
+  console.log(`Fetching source IDs for notebook ${notebookId}...`);
+  // Use list_notebooks RPC — result structure: [[title, [sources], id, ...], ...]
+  // Each source: [[source_id], title, ...]
+  const result = await rpc('wXbhsf', []);
+
+  if (!result || !Array.isArray(result) || !result[0]) return [];
+
+  const notebooks = Array.isArray(result[0]) ? result[0] : result;
+  for (const nb of notebooks) {
+    if (!Array.isArray(nb) || nb[2] !== notebookId) continue;
+
+    const sourcesData = nb[1];
+    if (!Array.isArray(sourcesData)) continue;
+
+    const ids = [];
+    for (const src of sourcesData) {
+      if (Array.isArray(src) && src[0]) {
+        const srcId = Array.isArray(src[0]) ? src[0][0] : src[0];
+        if (typeof srcId === 'string') ids.push(srcId);
+      }
+    }
+    console.log(`Found ${ids.length} source IDs`);
+    return ids;
+  }
+
+  console.warn('Notebook not found in list');
+  return [];
+}
+
+/**
  * Create an audio artifact and poll until complete.
  * @param {string} notebookId
  * @param {string[]} sourceIds - IDs returned from addSource calls

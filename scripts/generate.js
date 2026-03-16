@@ -2,7 +2,7 @@ import { createClient } from '@supabase/supabase-js';
 import { readFile } from 'node:fs/promises';
 import { fetchArticlesForTopic } from './rss-feeds.js';
 import { cleanCustomQuery, searchGoogleNews } from './custom-query.js';
-import { refreshAuth, createNotebook, addSource, generateAudio, downloadAudio, deleteNotebook } from './notebooklm.js';
+import { refreshAuth, createNotebook, addSource, generateAudio, downloadAudio, deleteNotebook, getSourceIds } from './notebooklm.js';
 
 const supabase = createClient(
   process.env.SUPABASE_URL,
@@ -68,14 +68,20 @@ async function main() {
     const notebookId = await createNotebook(notebookTitle);
     await updatePodcast(id, { notebook_id: notebookId });
 
-    const sourceIds = [];
     for (const article of allArticles) {
       try {
-        const sourceId = await addSource(notebookId, article.url);
-        if (sourceId) sourceIds.push(sourceId);
+        await addSource(notebookId, article.url);
+        // Small delay between sources to avoid rate limiting
+        await new Promise(r => setTimeout(r, 2000));
       } catch (err) { console.warn(`Failed to add source ${article.url}:`, err.message); }
     }
 
+    // Wait for NotebookLM to index sources before generating audio
+    console.log('Waiting 10s for sources to index...');
+    await new Promise(r => setTimeout(r, 10000));
+
+    // Get source IDs from notebook (more reliable than parsing addSource responses)
+    const sourceIds = await getSourceIds(notebookId);
     const { audioUrl } = await generateAudio(notebookId, sourceIds);
 
     // Phase 1 complete: audio is generated on NotebookLM.
