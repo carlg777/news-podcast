@@ -1,6 +1,11 @@
 import Anthropic from '@anthropic-ai/sdk';
+import Parser from 'rss-parser';
 
 const anthropic = new Anthropic();
+const parser = new Parser({
+  timeout: 10000,
+  headers: { 'User-Agent': 'NewsPodcastBot/1.0' },
+});
 
 export async function cleanCustomQuery(rawQuery) {
   const response = await anthropic.messages.create({
@@ -27,43 +32,30 @@ Respond with ONLY valid JSON (no markdown):
   }
 }
 
-export async function searchNewsAPI(queries, maxArticles = 5) {
-  const apiKey = process.env.NEWS_API_KEY;
-  if (!apiKey) {
-    console.warn('NEWS_API_KEY not set, skipping custom topic search');
-    return [];
-  }
-
-  const now = new Date();
-  const timeWindows = [
-    new Date(now - 1 * 24 * 60 * 60 * 1000),
-    new Date(now - 7 * 24 * 60 * 60 * 1000),
-    new Date(now - 30 * 24 * 60 * 60 * 1000),
-  ];
-
+/**
+ * Search Google News RSS with cleaned queries.
+ * Free, no API key, no rate limits.
+ * Returns array of { title, source, url }
+ */
+export async function searchGoogleNews(queries, maxArticles = 5) {
   for (const query of [queries.specific, queries.broad]) {
-    for (const fromDate of timeWindows) {
-      const params = new URLSearchParams({
-        q: query,
-        from: fromDate.toISOString().split('T')[0],
-        sortBy: 'publishedAt',
-        pageSize: String(maxArticles),
-        apiKey,
-      });
+    const encoded = encodeURIComponent(query);
+    const feedUrl = `https://news.google.com/rss/search?q=${encoded}&hl=en-US&gl=US&ceid=US:en`;
 
-      try {
-        const res = await fetch(`https://newsapi.org/v2/everything?${params}`);
-        const data = await res.json();
-        if (data.articles && data.articles.length > 0) {
-          return data.articles.map(a => ({
-            title: a.title,
-            source: a.source?.name || 'News',
-            url: a.url,
-          }));
-        }
-      } catch (err) {
-        console.warn(`News API search failed for "${query}":`, err.message);
+    try {
+      const feed = await parser.parseURL(feedUrl);
+      const articles = (feed.items || []).slice(0, maxArticles).map(item => ({
+        title: (item.title || 'Untitled').replace(/ - .*$/, ''),
+        source: item.title?.match(/ - (.+)$/)?.[1] || 'Google News',
+        url: item.link || item.guid,
+      }));
+
+      if (articles.length > 0) {
+        console.log(`Google News found ${articles.length} articles for "${query}"`);
+        return articles;
       }
+    } catch (err) {
+      console.warn(`Google News search failed for "${query}":`, err.message);
     }
   }
 

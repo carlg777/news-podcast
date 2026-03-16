@@ -1,7 +1,7 @@
 import { createClient } from '@supabase/supabase-js';
 import { readFile } from 'node:fs/promises';
 import { fetchArticlesForTopic } from './rss-feeds.js';
-import { cleanCustomQuery, searchNewsAPI } from './custom-query.js';
+import { cleanCustomQuery, searchGoogleNews } from './custom-query.js';
 import { refreshAuth, createNotebook, addSource, generateAudio, downloadAudio, deleteNotebook } from './notebooklm.js';
 
 const supabase = createClient(
@@ -46,7 +46,7 @@ async function main() {
         console.log(`Cleaning custom query: "${customQuery}"`);
         const cleaned = await cleanCustomQuery(customQuery);
         console.log(`Cleaned queries: ${JSON.stringify(cleaned)}`);
-        const customArticles = await searchNewsAPI(cleaned, articleCount);
+        const customArticles = await searchGoogleNews(cleaned, articleCount);
         allArticles.push(...customArticles);
       } else if (topic !== 'custom') {
         const topicArticles = await fetchArticlesForTopic(topic, articleCount);
