@@ -1,7 +1,7 @@
 // --- Config ---
-const SUPABASE_URL = ''; // Set in production
-const SUPABASE_ANON_KEY = ''; // Set in production
-const TRIGGER_API_KEY = ''; // Set in production
+const SUPABASE_URL = 'https://yifhgbpzdaphdkxpnydy.supabase.co';
+const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InlpZmhnYnB6ZGFwaGRreHBueWR5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzI1NzA2NTEsImV4cCI6MjA4ODE0NjY1MX0.mt_WC-YOBHpYB-IqySiK35XxXqFurH8TCt0iivy0Zyg';
+const TRIGGER_API_KEY = 'dfc7b56c2fcdc47b69f9c0dea6a16a02027d3bc89a9e544154be6ff9e026cd2c';
 
 const TOPICS = [
   { id: 'ai', name: 'AI', icon: '🤖', desc: 'Latest breakthroughs in artificial intelligence', defaultArticles: 8 },
