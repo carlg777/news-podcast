@@ -25,7 +25,7 @@ async function main() {
   // Find podcasts waiting for audio download
   const { data: pending, error } = await supabase
     .from('podcasts')
-    .select('id, notebook_id')
+    .select('id, notebook_id, retry_count')
     .eq('status', 'audio_ready');
 
   if (error) {
@@ -84,11 +84,24 @@ async function main() {
 
       console.log(`Podcast ${podcast.id} is ready: ${urlData.publicUrl}`);
     } catch (err) {
-      console.error(`Failed to download podcast ${podcast.id}:`, err.message);
-      await supabase.from('podcasts').update({
-        status: 'failed',
-        error_message: `Audio download failed: ${err.message}`,
-      }).eq('id', podcast.id);
+      const retries = (podcast.retry_count || 0) + 1;
+      const maxRetries = 6; // 6 retries × 5 min = 30 min window
+      console.error(`Failed to download podcast ${podcast.id} (attempt ${retries}/${maxRetries}):`, err.message);
+
+      if (retries >= maxRetries) {
+        await supabase.from('podcasts').update({
+          status: 'failed',
+          error_message: `Audio download failed after ${retries} attempts: ${err.message}`,
+          retry_count: retries,
+        }).eq('id', podcast.id);
+      } else {
+        // Keep as audio_ready so the next cron cycle retries
+        await supabase.from('podcasts').update({
+          retry_count: retries,
+          error_message: `Retry ${retries}/${maxRetries}: ${err.message}`,
+        }).eq('id', podcast.id);
+        console.log(`Will retry on next cycle (${retries}/${maxRetries}).`);
+      }
     }
   }
 }

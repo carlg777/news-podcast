@@ -3,4 +3,5 @@ node_modules/
 .vercel
 .DS_Store
 .env*.local
-supabase/
+supabase/*
+!supabase/migrations/
