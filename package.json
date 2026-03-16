@@ -1,0 +1,16 @@
+{
+  "name": "news-podcast",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "description": "AI-powered daily news podcast generator using NotebookLM",
+  "scripts": {
+    "generate": "node scripts/generate.js"
+  },
+  "dependencies": {
+    "@supabase/supabase-js": "^2.45.0",
+    "@anthropic-ai/sdk": "^0.39.0",
+    "rss-parser": "^3.13.0",
+    "notebooklm-cli": "^1.0.0"
+  }
+}

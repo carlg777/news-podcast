@@ -1,0 +1,115 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <title>News Podcast</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/styles.css">
+</head>
+<body>
+  <!-- View 1: Topic Picker -->
+  <section id="view-picker" class="view active">
+    <header class="picker-header">
+      <div>
+        <span class="label">News Podcast</span>
+        <p class="subtitle">Two AI hosts discuss today's top stories</p>
+      </div>
+      <div class="header-right">
+        <span class="date" id="today-date"></span>
+      </div>
+    </header>
+
+    <div class="topic-grid" id="topic-grid"></div>
+
+    <div class="custom-input-row" id="custom-input-row" style="display:none;">
+      <input type="text" id="custom-query-input" placeholder="Search any topic..." autocomplete="off">
+    </div>
+
+    <div class="article-stepper">
+      <span class="stepper-label">Articles to source</span>
+      <div class="stepper-controls">
+        <button class="stepper-btn" id="stepper-minus">−</button>
+        <span class="stepper-value" id="stepper-value">5</span>
+        <button class="stepper-btn" id="stepper-plus">+</button>
+      </div>
+    </div>
+
+    <button class="generate-btn" id="generate-btn">Generate Podcast</button>
+    <a href="#" class="history-link" id="show-history">🎧 Previous podcasts</a>
+  </section>
+
+  <!-- View 2: Generating State -->
+  <section id="view-generating" class="view">
+    <div class="generating-container">
+      <div class="generating-spinner"></div>
+      <p class="generating-status" id="generating-status">Fetching articles...</p>
+      <p class="generating-sub">This usually takes 2-4 minutes</p>
+      <button class="cancel-btn" id="cancel-btn">Cancel</button>
+    </div>
+  </section>
+
+  <!-- View 3: Audio Player -->
+  <section id="view-player" class="view">
+    <a href="#" class="back-link" id="back-to-picker">← New podcast</a>
+
+    <div class="player-card">
+      <div class="player-meta">
+        <span class="player-date" id="player-date"></span>
+        <div class="player-topics" id="player-topics"></div>
+      </div>
+
+      <audio id="audio-element" preload="metadata"></audio>
+
+      <div class="player-controls">
+        <button class="skip-btn" id="skip-back">
+          <span class="skip-icon">↺</span>
+          <span class="skip-label">15</span>
+        </button>
+        <button class="play-btn" id="play-btn">▶</button>
+        <button class="skip-btn" id="skip-forward">
+          <span class="skip-icon">↻</span>
+          <span class="skip-label">15</span>
+        </button>
+      </div>
+
+      <div class="progress-container" id="progress-container">
+        <div class="progress-bar" id="progress-bar"></div>
+      </div>
+      <div class="time-display">
+        <span id="time-current">0:00</span>
+        <span id="time-total">0:00</span>
+      </div>
+
+      <div class="speed-controls">
+        <button class="speed-btn" data-speed="0.5">0.5x</button>
+        <button class="speed-btn active" data-speed="1">1x</button>
+        <button class="speed-btn" data-speed="1.5">1.5x</button>
+        <button class="speed-btn" data-speed="2">2x</button>
+      </div>
+    </div>
+
+    <div class="sources-section">
+      <h3 class="sources-title">Sources</h3>
+      <div class="sources-list" id="sources-list"></div>
+    </div>
+  </section>
+
+  <!-- View 4: History -->
+  <section id="view-history" class="view">
+    <header class="history-header">
+      <a href="#" class="back-link" id="back-from-history">← Back</a>
+      <h2>Previous Podcasts</h2>
+    </header>
+
+    <div class="history-list" id="history-list"></div>
+    <p class="history-footer">Podcasts older than 7 days are automatically removed</p>
+  </section>
+
+  <script src="/app.js"></script>
+</body>
+</html>
