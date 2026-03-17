@@ -147,7 +147,7 @@ for each step in pipeline:
         - Execute remediation strategy:
           - 'backoff': retry step after delays from remediation.delays array
           - 'skip': log warning, mark step as 'skipped', continue pipeline (distinct from 'partial')
-        - Up to maxRetries attempts total (including original)
+        - Up to maxRetries retries after the original attempt (so maxRetries: 2 = 3 total attempts)
      d. If match found AND remediation.automated === false:
         - Log the remediation description and command
         - Abort pipeline (human action required)
