@@ -46,10 +46,14 @@ A cross-project resilient pipeline runner with two components sharing a known-is
 ### API
 
 ```js
-const { runPipeline } = require('/Users/carlgerber/.carl/pipeline-runner/pipeline-runner.js');
+const path = require('path');
+const os = require('os');
+const { runPipeline } = require(path.join(os.homedir(), '.carl/pipeline-runner/pipeline-runner.js'));
 
 const result = await runPipeline(pipelineName, steps, options);
 ```
+
+> **Path resolution**: Always use `path.join(os.homedir(), '.carl/pipeline-runner/...')` rather than hardcoded absolute paths. This ensures the module works on both local Mac (`/Users/carlgerber`) and GitHub Actions (`/home/runner`).
 
 **Parameters:**
 
@@ -63,7 +67,7 @@ const result = await runPipeline(pipelineName, steps, options);
 {
   name: 'add-sources',        // Human-readable step name
   type: 'nlm',                // Maps to timeout defaults
-  fn: async () => { ... },    // The actual work (returns any value)
+  fn: async (ctx) => { ... },  // The actual work — receives context object, returns any value
   timeout: 90000,             // Override default timeout in ms (optional)
   maxRetries: 3,              // Override default max retries (optional)
   continueOnFail: true,       // Don't abort pipeline on failure (optional)
@@ -104,6 +108,28 @@ const result = await runPipeline(pipelineName, steps, options);
 | `auth` | 2 min | 1 |
 | `interactive` | none | 0 |
 
+> **Note**: `interactive` type is only valid in the Claude skill context. The Node module rejects steps with `type: 'interactive'` and no explicit `timeout` override — prevents hanging in unattended pipelines.
+
+### Inter-Step Data Flow
+
+Steps receive a shared `ctx` (context) object for passing data between steps:
+
+```js
+const steps = [
+  { name: 'create-notebook', type: 'nlm', fn: async (ctx) => {
+    ctx.notebookId = await nlm.createNotebook(title);
+  }},
+  { name: 'add-sources', type: 'nlm', fn: async (ctx) => {
+    ctx.sourceIds = await addAllSources(ctx.notebookId, articles);
+  }, continueOnFail: true },
+  { name: 'generate-audio', type: 'nlm-longpoll', fn: async (ctx) => {
+    ctx.audioUrl = await nlm.generateAudio(ctx.notebookId, ctx.sourceIds);
+  }},
+];
+
+// Runner creates ctx = {} and passes it to each step.fn(ctx)
+```
+
 ### Execution Flow
 
 ```
@@ -116,11 +142,11 @@ for each step in pipeline:
      - Continue to next step
   4. On failure:
      a. Match error.message + error.stack against known-issues.json patterns (regex)
-     b. First matching issue wins
+     b. All matching issues collected; highest severity wins (critical > high > medium > low). On tie, longest pattern match wins.
      c. If match found AND remediation.automated === true AND issue.verified === true:
         - Execute remediation strategy:
           - 'backoff': retry step after delays from remediation.delays array
-          - 'skip': log warning, mark step as 'skipped', continue pipeline
+          - 'skip': log warning, mark step as 'skipped', continue pipeline (distinct from 'partial')
         - Up to maxRetries attempts total (including original)
      d. If match found AND remediation.automated === false:
         - Log the remediation description and command
@@ -133,7 +159,23 @@ for each step in pipeline:
           - false: abort pipeline
      g. Call onStepFail callback if provided
   5. After all steps (or abort): write runlog JSON to logDir
+  6. On SIGTERM/SIGINT: write partial runlog with status 'killed', then exit
 ```
+
+### Catalog File Resilience
+
+- **Missing file**: Create default `{"version":1,"issues":[]}` and continue
+- **Invalid JSON**: Log warning to runlog, fall back to empty catalog (no auto-remediation for this run)
+- **Writes**: Use atomic write (write to temp file, then `fs.renameSync`) to prevent corruption from concurrent reads
+- **Version mismatch**: If `version` > 1, log warning and use only entries that match v1 schema
+
+### Runlog Cleanup
+
+Runlogs older than 30 days are automatically deleted at the start of each `runPipeline()` call.
+
+### Backoff Delay Semantics
+
+The `delays` array specifies wait time before each retry attempt: `delays[0]` before retry 1, `delays[1]` before retry 2, etc. If `maxRetries` exceeds `delays.length`, the last delay value is reused for remaining retries.
 
 ### Runlog Format
 
@@ -156,11 +198,11 @@ File: `logs/{pipelineName}-{ISO timestamp}.json`
     {
       "name": "add-sources",
       "type": "nlm",
-      "status": "partial",
+      "status": "skipped",
       "duration": 12450,
-      "attempts": 2,
-      "warnings": ["Source 2 failed: FAILED_PRECONDITION — skipped per catalog"],
-      "remediation": "nlm-source-precondition"
+      "attempts": 1,
+      "warnings": ["Source 2 failed: FAILED_PRECONDITION — skipped per catalog (nlm-source-precondition)"],
+      "catalogMatch": "nlm-source-precondition"
     }
   ]
 }
@@ -217,7 +259,7 @@ File: `logs/{pipelineName}-{ISO timestamp}.json`
 
 ### Activation
 
-New CARL domain `PIPELINE` with keyword triggers: `pipeline`, `run pipeline`, `article-fodder`, `generate podcast`, `index vault`, `vault indexing`, `dashboard sync`.
+New CARL domain `PIPELINE` with keyword triggers: `pipeline`, `run pipeline`, `article-fodder`, `generate podcast`, `index vault`, `vault indexing`.
 
 ### Behavioral Rules
 
@@ -227,7 +269,7 @@ New CARL domain `PIPELINE` with keyword triggers: `pipeline`, `run pipeline`, `a
    - No match → debug normally
 3. **After resolving novel failure**: Ask user "Should I add this to the known-issues catalog?" If yes, append entry with `verified: false`
 4. **Retry cap**: Max 2 auto-remediation attempts per step. After 2 failures, stop and ask the user
-5. **Logging**: At workflow end, write a runlog JSON to `~/.carl/pipeline-runner/logs/`
+5. **Logging**: At workflow end, write a runlog JSON to `~/.carl/pipeline-runner/logs/` using the same format as the Node module (see Runlog Format section)
 6. **No brute force**: Never retry the same exact approach more than twice. If it didn't work twice, the approach is wrong.
 
 ### What the Skill Does NOT Do
@@ -243,14 +285,16 @@ New CARL domain `PIPELINE` with keyword triggers: `pipeline`, `run pipeline`, `a
 Wrap existing step functions with `runPipeline()`:
 
 ```js
-const { runPipeline } = require('/Users/carlgerber/.carl/pipeline-runner/pipeline-runner.js');
+const path = require('path');
+const os = require('os');
+const { runPipeline } = require(path.join(os.homedir(), '.carl/pipeline-runner/pipeline-runner.js'));
 
 const steps = [
-  { name: 'refresh-auth', type: 'auth', fn: () => nlm.refreshAuth() },
-  { name: 'fetch-articles', type: 'api', fn: () => fetchArticles(topics) },
-  { name: 'create-notebook', type: 'nlm', fn: () => nlm.createNotebook(title) },
-  { name: 'add-sources', type: 'nlm', fn: () => addAllSources(articles), continueOnFail: true },
-  { name: 'generate-audio', type: 'nlm-longpoll', fn: () => nlm.generateAudio(notebookId, sourceIds) },
+  { name: 'refresh-auth', type: 'auth', fn: async (ctx) => { await nlm.refreshAuth(); } },
+  { name: 'fetch-articles', type: 'api', fn: async (ctx) => { ctx.articles = await fetchArticles(topics); } },
+  { name: 'create-notebook', type: 'nlm', fn: async (ctx) => { ctx.notebookId = await nlm.createNotebook(title); } },
+  { name: 'add-sources', type: 'nlm', fn: async (ctx) => { ctx.sourceIds = await addAllSources(ctx.notebookId, ctx.articles); }, continueOnFail: true },
+  { name: 'generate-audio', type: 'nlm-longpoll', fn: async (ctx) => { ctx.audioUrl = await nlm.generateAudio(ctx.notebookId, ctx.sourceIds); } },
 ];
 
 const result = await runPipeline('news-podcast', steps, {
@@ -264,7 +308,9 @@ const result = await runPipeline('news-podcast', steps, {
 
 ### Phase 2 (`download-audio.js`)
 
-Replace existing retry logic with the runner. The `retry_count` column in Supabase is updated via the `onStepFail` callback.
+**Important**: `download-audio.js` has a fundamentally different retry model — it retries *across launchd invocations* (6 retries × 5 min = 30 min window via `retry_count` in Supabase). The pipeline runner's retries are *within a single invocation*.
+
+**Approach**: Use the runner for in-process resilience (timeout, catalog matching, runlog) but preserve the cross-invocation retry logic. The runner wraps the download+upload steps within a single launchd invocation. The existing `retry_count` tracking stays as the outer retry loop across invocations.
 
 ### Article Fodder
 
@@ -281,7 +327,7 @@ Add to `~/.carl/manifest`:
 ```
 PIPELINE_STATE=active
 PIPELINE_ALWAYS_ON=false
-PIPELINE_RECALL=pipeline,run pipeline,article-fodder,generate podcast,index vault,vault indexing,dashboard sync
+PIPELINE_RECALL=pipeline,run pipeline,article-fodder,generate podcast,index vault,vault indexing
 ```
 
 Create `~/.carl/pipeline/rules` with the domain rules referencing the skill.
